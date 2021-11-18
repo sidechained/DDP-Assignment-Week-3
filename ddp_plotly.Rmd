@@ -1,0 +1,75 @@
+---
+title: "Comparison of First-name Popularity Across Districts of Berlin"
+author: "Graham Booth"
+date: "10/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+The following analysis compares the frequency of selected first names across the various districts of Berlin. It was created using RMarkdown and Plotly and uses a dataset that can be found on the Berlin Open Data website [here](https://daten.berlin.de/datensaetze/liste-der-häufigen-vornamen-2020) and is free to share and adapt under the following [creative commons license](https://creativecommons.org/licenses/by/3.0/de/).
+
+The two chosen names are displayed on an interactive radar chart, which can be hovered over, zoomed-in on or selected to better understand the data.
+
+The names themselves can be changed by editing them within the [RMarkdown file]() itself and re-knitting the html file. Currently name1 <- "Marie" and name2 <- "Anna".
+
+```{r, echo=FALSE, message=FALSE}
+library(dplyr)
+base_path = "https://github.com/berlinonline/haeufige-vornamen-berlin/raw/master/data/cleaned/2020/"
+filenames = c(
+  "charlottenburg-wilmersdorf.csv",
+  "friedrichshain-kreuzberg.csv",
+  "lichtenberg.csv",
+  "marzahn-hellersdorf.csv",
+  "mitte.csv",
+  "neukoelln.csv",
+  "pankow.csv",
+  "reinickendorf.csv",
+  "spandau.csv",
+  "steglitz-zehlendorf.csv",
+  "tempelhof-schoeneberg.csv",
+  "treptow-koepenick.csv"
+)
+masterframe <- data.frame()
+for (filename in filenames) {
+  if (!file.exists(filename)) { download.file(paste0(base_path, filename), filename) }
+  thisframe <- read.csv(filename) %>% mutate(district = substr(filename,1,nchar(filename)-4))
+  masterframe <- bind_rows(masterframe, thisframe)
+}
+summedframe <- masterframe %>% group_by(district, vorname) %>% summarize(anzahl = sum(anzahl))
+
+# Produce a radar chart in plotly, based on two names from dataset
+name1 <- "Marie"
+name2 <- "Anna"
+name1frame <- summedframe %>% filter(vorname == name1)
+name2frame <- summedframe %>% filter(vorname == name2)
+
+library(plotly)
+fig <- plot_ly(
+    type = 'scatterpolar',
+    fill = 'toself'
+  ) 
+fig <- fig %>%
+  add_trace(
+    r = name1frame %>% pull(anzahl),
+    theta = name1frame %>% pull(district),
+    name = name1
+  ) 
+fig <- fig %>%
+  add_trace(
+    r = name2frame %>% pull(anzahl),
+    theta = name2frame %>% pull(district),
+    name = name2
+  ) 
+fig <- fig %>%
+  layout(
+    polar = list(
+      radialaxis = list(
+        visible = T,
+        range = c(0,summedframe %>% pull(anzahl) %>% max())
+      )
+    )
+  )
+fig
+```
